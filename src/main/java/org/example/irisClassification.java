@@ -1,4 +1,5 @@
 package org.example;
+
 import org.apache.log4j.BasicConfigurator;
 import org.datavec.api.records.reader.RecordReader;
 import org.datavec.api.records.reader.impl.csv.CSVRecordReader;
@@ -27,8 +28,8 @@ import java.io.File;
 import java.io.IOException;
 
 public class irisClassification {
-    private static int FEATURES_COUNT = 4;
-    private static int CLASSES_COUNT = 3;
+    final private static int FEATURES_COUNT = 4;
+    final private static int CLASSES_COUNT = 3;
 
     public static void main(String[] args) {
 
@@ -41,18 +42,18 @@ public class irisClassification {
     private static void saveBiasAndWeights(MultiLayerNetwork model) throws IOException {
         File locationToSave = new File("resources/savedModels/MyMultiLayerNetwork.zip");
         int i = 1;
-        while (locationToSave.exists()){
-            locationToSave = new File("resources/savedModels/MyMultiLayerNetwork_"+i+".zip");
+        while (locationToSave.exists()) {
+            locationToSave = new File("resources/savedModels/MyMultiLayerNetwork_" + i + ".zip");
             i++;
         }
         ModelSerializer.writeModel(model, locationToSave, true);
     }
 
-    private static void irisNNetwork(DataSet trainingData, DataSet testData) throws IOException {
+    private static void irisNNetwork(DataSet trainingData, DataSet testData,Boolean save) throws IOException {
         MultiLayerConfiguration configuration = new NeuralNetConfiguration.Builder()
                 .activation(Activation.TANH)
                 .weightInit(WeightInit.XAVIER)
-                .updater(new Nesterovs(0.1, 0.91))
+                .updater(new Nesterovs(0.1, 0.9))
                 .l2(0.0001)
                 .list()
                 .layer(0, new DenseLayer.Builder().nIn(FEATURES_COUNT).nOut(3).build())
@@ -71,8 +72,9 @@ public class irisClassification {
         eval.eval(testData.getLabels(), output);
         System.out.printf(eval.stats());
 
-        saveBiasAndWeights(model);
-
+        if (save){
+            saveBiasAndWeights(model);
+        }
     }
 
 
@@ -93,7 +95,7 @@ public class irisClassification {
             DataSet trainingData = testAndTrain.getTrain();
             DataSet testingData = testAndTrain.getTest();
 
-            irisNNetwork(trainingData,testingData);
+            irisNNetwork(trainingData, testingData,true);
 
 
         } catch (IOException | InterruptedException e) {

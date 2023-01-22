@@ -11,6 +11,7 @@ import org.deeplearning4j.nn.conf.layers.DenseLayer;
 import org.deeplearning4j.nn.conf.layers.OutputLayer;
 import org.deeplearning4j.nn.multilayer.MultiLayerNetwork;
 import org.deeplearning4j.nn.weights.WeightInit;
+import org.deeplearning4j.util.ModelSerializer;
 import org.nd4j.linalg.activations.Activation;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.dataset.DataSet;
@@ -22,6 +23,7 @@ import org.nd4j.linalg.io.ClassPathResource;
 import org.nd4j.linalg.learning.config.Nesterovs;
 import org.nd4j.linalg.lossfunctions.LossFunctions;
 
+import java.io.File;
 import java.io.IOException;
 
 public class irisClassification {
@@ -36,7 +38,17 @@ public class irisClassification {
 
     }
 
-    private static void irisNNetwork(DataSet trainingData, DataSet testData) {
+    private static void saveBiasAndWeights(MultiLayerNetwork model) throws IOException {
+        File locationToSave = new File("resources/savedModels/MyMultiLayerNetwork.zip");
+        int i = 1;
+        while (locationToSave.exists()){
+            locationToSave = new File("resources/savedModels/MyMultiLayerNetwork_"+i+".zip");
+            i++;
+        }
+        ModelSerializer.writeModel(model, locationToSave, true);
+    }
+
+    private static void irisNNetwork(DataSet trainingData, DataSet testData) throws IOException {
         MultiLayerConfiguration configuration = new NeuralNetConfiguration.Builder()
                 .activation(Activation.TANH)
                 .weightInit(WeightInit.XAVIER)
@@ -59,6 +71,8 @@ public class irisClassification {
         eval.eval(testData.getLabels(), output);
         System.out.printf(eval.stats());
 
+        saveBiasAndWeights(model);
+
     }
 
 
@@ -75,7 +89,7 @@ public class irisClassification {
             normalizer.fit(allData);
             normalizer.transform(allData);
 
-            SplitTestAndTrain testAndTrain = allData.splitTestAndTrain(0.70);
+            SplitTestAndTrain testAndTrain = allData.splitTestAndTrain(0.80);
             DataSet trainingData = testAndTrain.getTrain();
             DataSet testingData = testAndTrain.getTest();
 

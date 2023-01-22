@@ -29,14 +29,14 @@ import java.io.IOException;
 
 public class irisClassification {
     final private static int FEATURES_COUNT = 4;
-    final private static int CLASSES_COUNT = 3;
+    final private static int CLASSES_COUNT = 5;
 
     public static void main(String[] args) {
-
-
+        //Current build takes Age, Sex(Male=0 Female=1), Race, Grip Strength
+        //And tries to estimate Fearfulness score of the participant 1-5
+        //Dataset used = https://www.kaggle.com/datasets/thedevastator/physical-strength-correlation-with-fear-related?resource=download&select=Sample_5_corrected.csv
         BasicConfigurator.configure();
         loadData();
-
     }
 
     private static void saveBiasAndWeights(MultiLayerNetwork model) throws IOException {
@@ -49,16 +49,17 @@ public class irisClassification {
         ModelSerializer.writeModel(model, locationToSave, true);
     }
 
-    private static void irisNNetwork(DataSet trainingData, DataSet testData,Boolean save) throws IOException {
+    private static void irisNNetwork(DataSet trainingData, DataSet testData, Boolean save) throws IOException {
         MultiLayerConfiguration configuration = new NeuralNetConfiguration.Builder()
                 .activation(Activation.TANH)
                 .weightInit(WeightInit.XAVIER)
-                .updater(new Nesterovs(0.1, 0.9))
-                .l2(0.0001)
+                .updater(new Nesterovs(0.35, 0.9))
+                .l2(0.001)
                 .list()
-                .layer(0, new DenseLayer.Builder().nIn(FEATURES_COUNT).nOut(3).build())
-                .layer(1, new DenseLayer.Builder().nIn(3).nOut(3).build())
-                .layer(2, new OutputLayer.Builder(
+                .layer(0, new DenseLayer.Builder().nIn(FEATURES_COUNT).nOut(5).build())
+                .layer(1, new DenseLayer.Builder().nIn(5).nOut(4).build())
+                .layer(2, new DenseLayer.Builder().nIn(4).nOut(3).build())
+                .layer(3, new OutputLayer.Builder(
                         LossFunctions.LossFunction.NEGATIVELOGLIKELIHOOD).activation(Activation.SOFTMAX)
                         .nIn(3).nOut(CLASSES_COUNT).build())
                 .backprop(true).pretrain(false).build();
@@ -68,22 +69,24 @@ public class irisClassification {
         model.fit(trainingData);
 
         INDArray output = model.output(testData.getFeatureMatrix());
-        Evaluation eval = new Evaluation(3);
+        Evaluation eval = new Evaluation(5);
         eval.eval(testData.getLabels(), output);
         System.out.printf(eval.stats());
+        System.out.println();
+        System.out.println(eval.confusionToString());
 
-        if (save){
+        if (save) {
             saveBiasAndWeights(model);
         }
     }
 
 
     private static void loadData() {
-        try (RecordReader recordReader = new CSVRecordReader(0, ',')) {
-            recordReader.initialize(new FileSplit(new ClassPathResource("iris.csv").getFile()
+        try (RecordReader recordReader = new CSVRecordReader(1, ',')) {
+            recordReader.initialize(new FileSplit(new ClassPathResource("Physical Strength & Fear-Related Personality.csv").getFile()
             ));
 
-            DataSetIterator iterator = new RecordReaderDataSetIterator(recordReader, 150, 4, 3);
+            DataSetIterator iterator = new RecordReaderDataSetIterator(recordReader, 305, 4, 5);
             DataSet allData = iterator.next();
             allData.shuffle(123);
 
@@ -91,11 +94,11 @@ public class irisClassification {
             normalizer.fit(allData);
             normalizer.transform(allData);
 
-            SplitTestAndTrain testAndTrain = allData.splitTestAndTrain(0.80);
+            SplitTestAndTrain testAndTrain = allData.splitTestAndTrain(0.75);
             DataSet trainingData = testAndTrain.getTrain();
             DataSet testingData = testAndTrain.getTest();
 
-            irisNNetwork(trainingData, testingData,true);
+            irisNNetwork(trainingData, testingData, true);
 
 
         } catch (IOException | InterruptedException e) {
